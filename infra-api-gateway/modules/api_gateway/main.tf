@@ -10,7 +10,8 @@ resource "aws_api_gateway_rest_api" "main" {
   tags = var.tags
 }
 
-# Resource para proxy (captura todos os paths incluindo raiz)
+# ✅ CORRIGIDO: Usar {proxy+} em vez de {proxy}
+# {proxy+} captura todos os segmentos do path (greedy path)
 resource "aws_api_gateway_resource" "proxy" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   parent_id   = aws_api_gateway_rest_api.main.root_resource_id
@@ -25,20 +26,27 @@ resource "aws_api_gateway_method" "proxy_any" {
   authorization    = "NONE"
   api_key_required = false
 
+  # Apenas o path é obrigatório
   request_parameters = {
     "method.request.path.proxy" = true
   }
 }
 
-# Integração HTTP para o backend (NLB)
+# ✅ CORRIGIDO: Integração HTTP_PROXY com path mapping
+# Agora o path é passado corretamente para o backend
 resource "aws_api_gateway_integration" "proxy_http" {
   rest_api_id             = aws_api_gateway_rest_api.main.id
   resource_id             = aws_api_gateway_resource.proxy.id
   http_method             = aws_api_gateway_method.proxy_any.http_method
-  type                    = "HTTP"
+  type                    = "HTTP_PROXY"
   integration_http_method = "ANY"
-  uri                     = "http://ab3aec5d75ac942698ace6997271b40a-177148928.us-east-1.elb.amazonaws.com:8081/{proxy+}"
+  
+  # ✅ NOVO: Adicionar {proxy} ao URI para path mapping
+  # Sem {proxy}: GET /prod/swagger-ui/index.html → GET /
+  # Com {proxy}:  GET /prod/swagger-ui/index.html → GET /swagger-ui/index.html
+  uri = "http://ab446b3b60bb64485b852c97f93691be-1844998745.us-east-1.elb.amazonaws.com/{proxy}"
 
+  # ✅ NOVO: Mapear o path parameter
   request_parameters = {
     "integration.request.path.proxy" = "method.request.path.proxy"
   }
@@ -46,20 +54,7 @@ resource "aws_api_gateway_integration" "proxy_http" {
   depends_on = [aws_api_gateway_method.proxy_any]
 }
 
-# Response da integração para status 200 (padrão)
-resource "aws_api_gateway_integration_response" "proxy_response_200" {
-  rest_api_id       = aws_api_gateway_rest_api.main.id
-  resource_id       = aws_api_gateway_resource.proxy.id
-  http_method       = aws_api_gateway_method.proxy_any.http_method
-  status_code       = "200"
-  response_templates = {
-    "application/json" = ""
-  }
-
-  depends_on = [aws_api_gateway_integration.proxy_http]
-}
-
-# Method Response para 200
+# ✅ Method Response para o proxy (200)
 resource "aws_api_gateway_method_response" "proxy_response_200" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   resource_id = aws_api_gateway_resource.proxy.id
@@ -67,7 +62,68 @@ resource "aws_api_gateway_method_response" "proxy_response_200" {
   status_code = "200"
 }
 
-# Método GET para raiz (/) - redireciona para Swagger UI
+# ✅ Integration Response para o proxy (200)
+# selection_pattern vazio = captura todos os status codes 2xx por padrão
+resource "aws_api_gateway_integration_response" "proxy_response_200" {
+  rest_api_id       = aws_api_gateway_rest_api.main.id
+  resource_id       = aws_api_gateway_resource.proxy.id
+  http_method       = aws_api_gateway_method.proxy_any.http_method
+  status_code       = "200"
+  selection_pattern = ""  # Padrão vazio = captura tudo
+  response_templates = {
+    "application/json" = ""
+  }
+
+  depends_on = [aws_api_gateway_integration.proxy_http]
+}
+
+# ✅ Method Response para 4xx (Bad Request, Unauthorized, Forbidden, Not Found, etc)
+resource "aws_api_gateway_method_response" "proxy_response_4xx" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.proxy.id
+  http_method = aws_api_gateway_method.proxy_any.http_method
+  status_code = "400"
+}
+
+# ✅ Integration Response para 4xx (400-499)
+# selection_pattern = regex que captura 400-499
+resource "aws_api_gateway_integration_response" "proxy_response_4xx" {
+  rest_api_id       = aws_api_gateway_rest_api.main.id
+  resource_id       = aws_api_gateway_resource.proxy.id
+  http_method       = aws_api_gateway_method.proxy_any.http_method
+  status_code       = "400"
+  selection_pattern = "4\\d{2}"  # Regex: 400-499
+  response_templates = {
+    "application/json" = ""
+  }
+
+  depends_on = [aws_api_gateway_integration.proxy_http]
+}
+
+# ✅ Method Response para 5xx (Internal Server Error, Bad Gateway, etc)
+resource "aws_api_gateway_method_response" "proxy_response_5xx" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.proxy.id
+  http_method = aws_api_gateway_method.proxy_any.http_method
+  status_code = "500"
+}
+
+# ✅ Integration Response para 5xx (500-599)
+# selection_pattern = regex que captura 500-599
+resource "aws_api_gateway_integration_response" "proxy_response_5xx" {
+  rest_api_id       = aws_api_gateway_rest_api.main.id
+  resource_id       = aws_api_gateway_resource.proxy.id
+  http_method       = aws_api_gateway_method.proxy_any.http_method
+  status_code       = "500"
+  selection_pattern = "5\\d{2}"  # Regex: 500-599
+  response_templates = {
+    "application/json" = ""
+  }
+
+  depends_on = [aws_api_gateway_integration.proxy_http]
+}
+
+# Método GET para raíz (/) - redireciona para Swagger UI
 resource "aws_api_gateway_method" "root_get" {
   rest_api_id      = aws_api_gateway_rest_api.main.id
   resource_id      = aws_api_gateway_rest_api.main.root_resource_id
@@ -168,17 +224,19 @@ resource "aws_api_gateway_stage" "main" {
   access_log_settings {
     destination_arn = var.cloudwatch_log_group_arn
     format = jsonencode({
-      requestId      = "$context.requestId"
-      ip             = "$context.identity.sourceIp"
-      requestTime    = "$context.requestTime"
-      httpMethod     = "$context.httpMethod"
-      resourcePath   = "$context.resourcePath"
-      status         = "$context.status"
-      protocol       = "$context.protocol"
-      responseLength = "$context.responseLength"
-      integrationLatency = "$context.integration.latency"
-      error          = "$context.error.message"
-      errorType      = "$context.error.messageString"
+      requestId              = "$context.requestId"
+      ip                     = "$context.identity.sourceIp"
+      requestTime            = "$context.requestTime"
+      httpMethod             = "$context.httpMethod"
+      resourcePath           = "$context.resourcePath"
+      status                 = "$context.status"
+      protocol               = "$context.protocol"
+      responseLength         = "$context.responseLength"
+      integrationLatency     = "$context.integration.latency"
+      integrationStatus      = "$context.integration.status"
+      error                  = "$context.error.message"
+      errorType              = "$context.error.messageString"
+      integrationErrorMessage = "$context.integration.error"
     })
   }
 
@@ -200,6 +258,12 @@ resource "aws_api_gateway_deployment" "main" {
       aws_api_gateway_resource.proxy.id,
       aws_api_gateway_method.proxy_any.id,
       aws_api_gateway_integration.proxy_http.id,
+      aws_api_gateway_method_response.proxy_response_200.id,
+      aws_api_gateway_integration_response.proxy_response_200.id,
+      aws_api_gateway_method_response.proxy_response_4xx.id,
+      aws_api_gateway_integration_response.proxy_response_4xx.id,
+      aws_api_gateway_method_response.proxy_response_5xx.id,
+      aws_api_gateway_integration_response.proxy_response_5xx.id,
       aws_api_gateway_method.root_get.id,
       aws_api_gateway_integration.root_redirect.id,
     ]))
@@ -211,8 +275,12 @@ resource "aws_api_gateway_deployment" "main" {
 
   depends_on = [
     aws_api_gateway_integration.proxy_http,
-    aws_api_gateway_integration_response.proxy_response_200,
     aws_api_gateway_method_response.proxy_response_200,
+    aws_api_gateway_integration_response.proxy_response_200,
+    aws_api_gateway_method_response.proxy_response_4xx,
+    aws_api_gateway_integration_response.proxy_response_4xx,
+    aws_api_gateway_method_response.proxy_response_5xx,
+    aws_api_gateway_integration_response.proxy_response_5xx,
     aws_api_gateway_integration.root_redirect,
     aws_api_gateway_integration_response.root_redirect_response,
     aws_api_gateway_method_response.root_redirect_method_response,
