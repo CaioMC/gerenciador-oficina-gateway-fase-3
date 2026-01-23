@@ -123,7 +123,7 @@ resource "aws_api_gateway_integration_response" "proxy_response_5xx" {
   depends_on = [aws_api_gateway_integration.proxy_http]
 }
 
-# Método GET para raíz (/) - redireciona para Swagger UI
+# Método GET para raíz (/) - redireciona para Swagger Docs
 resource "aws_api_gateway_method" "root_get" {
   rest_api_id      = aws_api_gateway_rest_api.main.id
   resource_id      = aws_api_gateway_rest_api.main.root_resource_id
@@ -132,7 +132,7 @@ resource "aws_api_gateway_method" "root_get" {
   api_key_required = false
 }
 
-# Integração MOCK para redirecionar / para /swagger-ui/index.html
+# Integração MOCK para redirecionar
 resource "aws_api_gateway_integration" "root_redirect" {
   rest_api_id      = aws_api_gateway_rest_api.main.id
   resource_id      = aws_api_gateway_rest_api.main.root_resource_id

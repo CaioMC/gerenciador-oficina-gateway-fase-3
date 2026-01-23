@@ -51,7 +51,7 @@ output "iam_role_arn" {
 
 output "swagger_ui_url" {
   description = "URL para acessar o Swagger UI"
-  value       = "${module.api_gateway.api_gateway_endpoint}/swagger-ui/index.html"
+  value       = "${module.api_gateway.api_gateway_endpoint}/swagger-ui/v3/api-docs/v1%20-%20api"
 }
 
 output "rate_limit_info" {

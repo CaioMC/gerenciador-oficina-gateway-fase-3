@@ -33,7 +33,7 @@ module "api_gateway" {
   nlb_endpoint             = var.nlb_endpoint
   rate_limit_requests      = var.rate_limit_requests
   burst_limit              = var.burst_limit
-  swagger_ui_path          = "/swagger-ui/index.html"
+  swagger_ui_path          = "/prod/swagger-ui/v3/api-docs/v1%20-%20api"
   cloudwatch_role_arn      = module.iam.api_gateway_role_arn
   cloudwatch_log_group_arn = module.cloudwatch.log_group_arn
   tags                     = merge(var.tags, { Name = var.api_gateway_name })
