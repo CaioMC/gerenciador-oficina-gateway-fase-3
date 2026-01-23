@@ -36,9 +36,7 @@ O projeto é responsável pela criação de:
 - **AWS API Gateway** - Gateway de API REST
 - **AWS CloudWatch** - Logs e monitoramento
 - **AWS IAM** - Controle de acesso e permissões
-- **AWS S3 + DynamoDB** - Armazena o `terraform.tfstate` e gerencia *locks*
 - **GitHub Actions** - Automação CI/CD
-- **GitHub** - Controle de versão
 
 ---
 
@@ -121,7 +119,7 @@ https://{api-id}.execute-api.us-east-1.amazonaws.com/prod
 
 Acesse:
 ```
-https://{api-id}.execute-api.us-east-1.amazonaws.com/prod/swagger-ui/index.html
+https://{api-id}.execute-api.us-east-1.amazonaws.com/prod/swagger-ui/v3/api-docs
 ```
 
 ## ⚙️ Pipeline Automatizado (GitHub Actions)
@@ -177,6 +175,6 @@ A arquitetura do **Gerenciador de Oficina — Fase 3** é composta por múltiplo
 | ⚡ **Lambda Functions** | Conjunto de funções *serverless* para processamento assíncrono, notificações e automações event-driven. | [gerenciador-oficina-lambda-fase-3](https://github.com/thomaserick/gerenciador-oficina-lambda-fase-3) |
 | ☸️ **Kubernetes Infrastructure** | Infraestrutura da aplicação no Kubernetes, incluindo manifests, deployments, ingress e autoscaling. | [gerenciador-oficina-k8s-infra-fase-3](https://github.com/thomaserick/gerenciador-oficina-k8s-infra-fase-3) |
 | 🗄️ **Database Infrastructure** | Infraestrutura do banco de dados gerenciado (RDS PostgreSQL), versionada e automatizada via Terraform. | [gerenciador-oficina-db-infra-fase-3](https://github.com/thomaserick/gerenciador-oficina-db-infra-fase-3) |
-| 🌐 **API Gateway Infrastructure** | Infraestrutura do API Gateway com rate limiting, redirecionamento e monitoramento via Terraform. | [gerenciador-oficina-api-gateway-infra-fase-3](https://github.com/thomaserick/gerenciador-oficina-api-gateway-infra-fase-3) |
+| 🌐 **API Gateway Infrastructure** | Infraestrutura do API Gateway com rate limiting, redirecionamento e monitoramento via Terraform. | [gerenciador-oficina-api-gateway-infra-fase-3](https://github.com/CaioMC/gerenciador-oficina-gateway-fase-3) |
 
 > 🔍 Cada repositório é autônomo, mas integra-se ao **Core** por meio de pipelines e configurações declarativas (Terraform e CI/CD).
