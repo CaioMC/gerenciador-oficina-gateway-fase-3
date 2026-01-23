@@ -21,7 +21,7 @@ Este repositório tem como objetivo **provisionar e gerenciar o AWS API Gateway*
 O projeto é responsável pela criação de:
 
 - **API Gateway REST** para expor a aplicação Spring Boot;
-- **Redirecionamento automático** de `/` para `/swagger-ui/index.html`;
+- **Redirecionamento automático** de `/` para `swagger-ui/v3/api-docs`;
 - **Rate Limiting** de 5 requisições por minuto para proteção contra abuso;
 - **CloudWatch Logs** para monitoramento e auditoria;
 - **IAM Roles e Policies** para controle de acesso seguro;
